@@ -75,7 +75,7 @@ def create_handler(session):
     if path in ('/api/selection','/api/audio','/media'):unchanged()
     if path=='/api/selection':return self.send(200,json.dumps(words.locate(int(q['lo'][0]),int(q['hi'][0])),ensure_ascii=False))
     if path=='/api/audio':return self.send(200,words.audio(float(q['start'][0]),float(q['end'][0])),'audio/wav')
-    if path=='/api/session':return self.send(200,json.dumps({'title':config['title'],'baseline':config['baseline'],'media_mime':mimetypes.guess_type(playback)[0],'text_baseline':config['transcript_sha256']},ensure_ascii=False))
+    if path=='/api/session':return self.send(200,json.dumps({'title':config['title'],'baseline':config['baseline'],'media_mime':mimetypes.guess_type(playback)[0],'text_baseline':config.get('text_baseline_sha256',config['transcript_sha256'])},ensure_ascii=False))
     if path in ('/','/audio-engine.js'):
      name='index.html' if path=='/' else 'audio-engine.js';return self.send(200,(session/name).read_bytes(),'text/html; charset=utf-8' if path=='/' else 'text/javascript; charset=utf-8')
     if path=='/api/transcript':return self.send(200,(session/'transcript.json').read_bytes())
@@ -112,7 +112,9 @@ def create_handler(session):
    try:
     unchanged();n=int(self.headers.get('Content-Length',0))
     if not 0<n<2000000:raise ValueError('Payload too large')
-    payload=json.loads(self.rfile.read(n));cuts=payload['cuts'];validate_cuts(cuts,duration)
+    payload=json.loads(self.rfile.read(n))
+    if payload.get('baseline')!=config['baseline']:raise ValueError('Review baseline changed; refresh this page before editing')
+    cuts=payload['cuts'];validate_cuts(cuts,duration)
     if not isinstance(payload['revision'],int) or isinstance(payload['revision'],bool):raise ValueError('Invalid revision')
     with lock:
      old=read()

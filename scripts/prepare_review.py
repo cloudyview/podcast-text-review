@@ -42,8 +42,9 @@ def prepare(media,transcript,output,title,simplifier=None,proxy=False,speaker_tu
  value=videos[0].get('duration');duration=float(probe['format']['duration'] if value in (None,'N/A') else value)
  if not math.isfinite(duration) or duration<=0:raise ValueError('Invalid media duration')
  if rows[-1]['end_seconds']>duration+.001 or any(r['end_seconds']>duration+.001 for r in rows):raise ValueError('Transcript exceeds video; confirm matching clock/version before use')
- digest=sha(media);st=media.stat();baseline='baseline-'+hashlib.sha256((digest+'|'+sha(transcript)).encode()).hexdigest()
+ digest=sha(media);st=media.stat();text_digest=hashlib.sha256(json.dumps(rows,ensure_ascii=False,sort_keys=True).encode()).hexdigest();baseline='baseline-'+hashlib.sha256((digest+'|'+text_digest).encode()).hexdigest()
  config={'schema_version':2,'simplifier':str(simplifier.resolve()) if simplifier else None,'title':title,'baseline':baseline,'media':str(media),'media_sha256':digest,'media_bytes':st.st_size,'media_mtime_ns':st.st_mtime_ns,'duration':duration,'frame_rate':videos[0].get('avg_frame_rate'),'transcript_source':str(transcript),'transcript_sha256':sha(transcript),'cue_count':len(rows),'review_limits':'selected text with candidate token timing and manual PCM boundary audition; not certified phoneme boundaries'}
+ config['text_baseline_sha256']=text_digest
  output.mkdir(parents=True)
  if proxy:
   preview=output/'playback-proxy.mp4'

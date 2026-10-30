@@ -19,8 +19,8 @@ def format_rows(rows,turns=None):
     else:speaker='说话人交接待核';source='turn overlap; not forced to one speaker'
   text=raw.strip();nextrow=rows[i+1] if i+1<len(rows) else None;gap=(nextrow['start_seconds']-b) if nextrow else 1
   # Only append a reading mark; never rewrite, translate, deduplicate or finish a thought.
-  if text and text[-1] not in '，。！？!?；;：:,.':
-   chinese=bool(re.search(r'[\u3400-\u9fff]',text));text+=('。' if chinese else '.') if gap>.6 or nextrow is None else ('，' if chinese else ',')
+  if text and text[-1] not in '，。！？!?；;：:,.' and (gap>.6 or nextrow is None):
+   chinese=bool(re.search(r'[\u3400-\u9fff]',text));text+='。' if chinese else '.'
   if lexical(raw)!=lexical(text):raise ValueError('Punctuation formatting changed a spoken word')
   result.append({**r,'text':text,'raw_text':raw,'speaker':speaker,'speaker_source':source,'punctuation_source':'raw ASR plus appended reading hints; reviewable','verbatim_lexical_invariant':True})
  return result

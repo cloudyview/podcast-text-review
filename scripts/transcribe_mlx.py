@@ -32,6 +32,7 @@ def rows_from_alignment(text,items,offset,core_in,core_out,turns=None):
   for t in turns or []:
    overlap=max(0,min(b,t['end'])-max(a,t['start']))
    if overlap:scores[t['speaker']]=scores.get(t['speaker'],0)+overlap
+   elif a==b and t['start']<=a<t['end']:scores[t['speaker']]=1
   return max(scores,key=scores.get) if scores else '说话人待核'
  def emit():
   if not bucket:return
@@ -43,6 +44,12 @@ def rows_from_alignment(text,items,offset,core_in,core_out,turns=None):
    if a<b:spans.append({'char_in':min(positions)-lo,'char_out':max(positions)+1-lo,'start':a,'end':b,'text':it['text'],'source':'Qwen forced-alignment candidate'})
   if spans:
    rawtext=text[lo:hi];result.append({'text':rawtext,'raw_text':rawtext,'start':min(x['start'] for x in spans),'end':max(x['end'] for x in spans),'word_spans':spans,'speaker':speaker,'speaker_source':'provided source turns; review identity at interruptions','needs_review':any(text[i].isalnum() and i not in mapping for i in range(lo,hi)),'word_timing':'forced-alignment candidates, not human signoff'})
+  else:
+   # Zero-duration aligner items are still spoken-text candidates. Keep their
+   # words, but offer only surrounding context and require manual boundaries.
+   anchors=[offset+items[mapping[i]]['start'] for i in range(lo,hi) if i in mapping]
+   point=anchors[0] if anchors else core_in;a=max(core_in,min(point,core_out-.001));b=min(core_out,max(a+.001,point+.2))
+   rawtext=text[lo:hi];result.append({'text':rawtext,'raw_text':rawtext,'start':a,'end':b,'word_spans':[],'speaker':speaker,'needs_review':True,'word_timing':'zero-duration alignment; context only, manual boundaries required'})
   bucket.clear()
  for i in range(first,last+1):
   label=who(i)
@@ -59,7 +66,7 @@ def transcribe_mlx(media,output,model,aligner,language='Cantonese',speaker_turns
   if not (output/'asr-config.json').exists() or json.loads((output/'asr-config.json').read_text())!=identity:raise ValueError('ASR cache belongs to another input; choose a new session path')
  else:output.mkdir(parents=True)
  (output/'asr-config.json').write_text(json.dumps(identity,indent=2)+'\n')
- if (output/'transcript.json').exists():return output/'transcript.json'
+ if (output/'transcript.json').exists() and json.loads((output/'transcript.json').read_text()).get('postprocess_version')==2:return output/'transcript.json'
  audio=output/'source-mono16k.wav'
  if not audio.exists():subprocess.run(['ffmpeg','-v','error','-i',str(media),'-vn','-ac','1','-ar','16000','-c:a','pcm_s16le',str(audio)],check=True)
  asr=load(str(model));align=load(str(aligner));turns=json.loads(Path(speaker_turns).read_text()) if speaker_turns else []
@@ -82,4 +89,4 @@ def transcribe_mlx(media,output,model,aligner,language='Cantonese',speaker_turns
    rows+=rows_from_alignment(raw['text'],raw['items'],raw['offset'],raw['core_in'],raw['core_out'],turns)
    print(f'Verbatim-target ASR: {min(total,core+25*16000)/16000:.1f}/{total/16000:.1f}s',flush=True)
  for i,row in enumerate(rows,1):row['cue_id']=f'raw-{i:05}'
- target=output/'transcript.json';target.write_text(json.dumps({'cues':rows,'status':'Raw ASR words plus forced-alignment candidates. No paraphrase/translation postprocessing. Human review required.','engine':'mlx-qwen','language':language},ensure_ascii=False,indent=2)+'\n');return target
+ target=output/'transcript.json';target.write_text(json.dumps({'cues':rows,'status':'Raw ASR words plus forced-alignment candidates. No paraphrase/translation postprocessing. Human review required.','engine':'mlx-qwen','language':language,'postprocess_version':2},ensure_ascii=False,indent=2)+'\n');return target

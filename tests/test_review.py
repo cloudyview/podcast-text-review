@@ -25,7 +25,7 @@ class PureTests(unittest.TestCase):
   self.assertEqual([r['speaker'] for r in formatted],['A','B'])
   self.assertEqual([r['raw_text'] for r in formatted],[r['text'] for r in original])
   self.assertEqual([lexical(r['text']) for r in formatted],[lexical(r['text']) for r in original])
-  self.assertTrue(formatted[0]['text'].endswith('，'))
+  self.assertEqual(formatted[0]['text'],original[0]['text']) # no punctuation inside continuous ASR chunk boundaries
  def test_aligned_verbatim_characters(self):
   rows=rows_from_alignment('我哋唔係咁講喎。',[{'text':c,'start':i*.2,'end':(i+1)*.2} for i,c in enumerate('我哋唔係咁講喎')],0,0,3,[{'start':0,'end':3,'speaker':'A'}])
   self.assertEqual(''.join(r['text'] for r in rows),'我哋唔係咁講喎。')
@@ -35,6 +35,10 @@ class PureTests(unittest.TestCase):
   for value in [float('nan'),float('inf'),True,-1,'1']:
    with self.assertRaises(ValueError):validate_cuts([{'start':value,'end':3}],8)
   validate_cuts([{'start':1,'end':2}],8)
+ def test_zero_duration_alignment_keeps_words(self):
+  text='我又又講。';items=[{'text':'我','start':0,'end':.3},{'text':'又','start':.3,'end':.3},{'text':'又','start':.3,'end':.3},{'text':'講','start':.4,'end':.7}]
+  rows=rows_from_alignment(text,items,0,0,1,[{'start':0,'end':1,'speaker':'A'}]);self.assertEqual(''.join(r['text'] for r in rows),text)
+  self.assertEqual(rows[0]['speaker'],'A')
  def test_verified_model_download(self):
   content=b'synthetic-model';metadata={'sha':'vendor-commit','siblings':[{'rfilename':'ggml-base.bin','lfs':{'sha256':hashlib.sha256(content).hexdigest()}}]}
   with tempfile.TemporaryDirectory() as tmp,patch('dependencies.urllib.request.urlopen',side_effect=[io.BytesIO(json.dumps(metadata).encode()),io.BytesIO(content)]):
@@ -54,6 +58,7 @@ class MediaTests(unittest.TestCase):
  def server(self):
   server=ThreadingHTTPServer(('127.0.0.1',0),create_handler(self.session));threading.Thread(target=server.serve_forever,daemon=True).start();return server,f'http://127.0.0.1:{server.server_port}'
  def post(self,url,body,**headers):
+  body={'baseline':json.loads((self.session/'config.json').read_text())['baseline'],**body}
   req=urllib.request.Request(url+'/api/state',data=json.dumps(body).encode(),headers={'Content-Type':'application/json',**headers})
   try:
    with urllib.request.urlopen(req) as r:return r.status,json.load(r)
@@ -66,6 +71,7 @@ class MediaTests(unittest.TestCase):
    with urllib.request.urlopen(urllib.request.Request(url+'/media',method='HEAD')) as r:self.assertEqual(r.read(),b'')
    self.assertEqual(self.post(url,{'revision':0,'cuts':[{'start':1,'end':2,'selected_text':'Example','char_in':0,'char_out':1}]})[0],200)
    self.assertEqual(self.post(url,{'revision':0,'cuts':[]})[0],409)
+   self.assertEqual(self.post(url,{'baseline':'previous-text','revision':1,'cuts':[]})[0],400)
    self.assertEqual(self.post(url,{'revision':1,'cuts':[]},Origin='https://example.invalid')[0],403)
    self.assertEqual(self.post(url,{'revision':1,'cuts':[{'start':0,'end':9}]})[0],400)
   finally:server.shutdown();server.server_close()
