@@ -1,0 +1,2 @@
+# Optional Apple Silicon speech backend. Core application uses only stdlib.
+mlx-audio==0.6.3

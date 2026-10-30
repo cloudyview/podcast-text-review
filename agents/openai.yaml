@@ -1,0 +1,4 @@
+interface:
+  display_name: "播客人工文字审校"
+  short_description: "播放器联动时间码文本，标记删减、跳接试听并保存完整审校操作记录"
+  default_prompt: "使用 $podcast-text-review 打开当前视频的人工文字审校界面，并保留基线和删改过程。"
