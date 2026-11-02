@@ -67,6 +67,28 @@
       try { await bounded(this.element.play(), 1200); return 'html-audio'; } catch (_) { return 'html-audio-needs-click'; }
     }
   }
+  // All main-video play/seek entry points obey the same deletion switch.
+  ReviewAudio.attachSkip = function(media, options) {
+    let timer = null, jumping = false, ownedMute = false, previousMuted = false;
+    function cancel() { if (timer !== null) clearTimeout(timer); timer = null; }
+    function restore() { if (ownedMute) media.muted = previousMuted; ownedMute = false; }
+    function ranges() { const out=[]; for (const c of [...options.getCuts()].sort((a,b)=>a.start-b.start)) { const last=out[out.length-1]; if(last && c.start<=last.end) last.end=Math.max(last.end,c.end); else out.push({start:c.start,end:c.end}); } return out; }
+    function refresh() {
+      cancel(); if (jumping) return;
+      if (!options.isEnabled() || media.paused || media.ended) { restore(); return; }
+      const cuts=ranges(), time=media.currentTime, cut=cuts.find(c=>time>=c.start && time<c.end);
+      if (cut) {
+        if(!ownedMute) { previousMuted=media.muted; ownedMute=true; media.muted=true; }
+        jumping=true; media.currentTime=cut.end; jumping=false;
+      }
+      if (media.seeking) return; restore();
+      const next=cuts.find(c=>c.start>media.currentTime);
+      if(next) timer=setTimeout(refresh,Math.max(4,Math.min(100,(next.start-media.currentTime)/Math.max(.01,media.playbackRate||1)*1000-12)));
+    }
+    const events=['play','playing','seeking','seeked','timeupdate','ratechange','pause','ended'];
+    events.forEach(name=>media.addEventListener(name,refresh));
+    return {refresh,destroy(){cancel();restore();events.forEach(name=>media.removeEventListener(name,refresh));}};
+  };
   ReviewAudio.parseWav = parseWav; ReviewAudio.makeWav = makeWav; ReviewAudio.sliceRanges = sliceRanges;
   if (typeof module !== 'undefined' && module.exports) module.exports = ReviewAudio; else root.ReviewAudio = ReviewAudio;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

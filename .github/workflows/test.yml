@@ -15,4 +15,6 @@ jobs:
       - name: Python tests
         run: python -m unittest discover -s tests -v
       - name: Browser audio logic tests
-        run: node tests/test_audio.js
+        run: |
+          node tests/test_audio.js
+          node tests/test_skip.js
