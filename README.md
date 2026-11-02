@@ -123,7 +123,7 @@ node tests/test_audio.js    # optional Node 18+ test runner; not an application 
 
 Tests use synthetic color/tone media and temporary sessions. They cover source identity, save/restart, committed-event recovery, revision conflicts, source ranges, speaker/punctuation lexical preservation, native-audio fallback and FFmpeg export. Local ASR also has a synthetic-speech smoke test; CI does not download large models.
 
-This is an early tool for **human** review. Machine wording, speaker-turn metadata and timing candidates may be wrong; the UI requires listening and boundary confirmation. Keep session data outside this source checkout. Sessions, media, model weights, transcripts and logs are ignored by Git. No analytics or user recordings are included in this repository.
+This is an early tool for **human** review. Machine wording, speaker-turn metadata and timing candidates may be wrong; the UI displays candidate ranges and lets the reviewer decide whether to listen, adjust or delete. Keep session data outside this source checkout. Sessions, media, model weights, transcripts and logs are ignored by Git. No analytics or user recordings are included in this repository.
 
 ### Optional Apple Silicon Qwen backend
 
