@@ -87,7 +87,8 @@ If a source codec/container cannot play in your browser, pass `--proxy` to `new`
 
 ## Review, save and export
 
-1. Drag-select a word or phrase in continuous text; locate the candidate source range.
+1. Drag-select a word or phrase (or click a single character). The main video pauses and automatically seeks to the candidate word time. Purple selection stays fixed; the green timestamp shows playback position independently.
+   Use the button above the transcript to play from one second before the selection. Selection freezes automatic scrolling and previews source speech without skipping marked cuts. Clear the selection to resume following and edited playback.
 2. Listen to the selected audio and, when needed, adjust waveform/time boundaries in 20 ms steps.
 3. Audition the join, then confirm. Partial/missing token matches require manual boundary adjustment; character-count timing is never fabricated.
 4. Restore, undo or redo as needed. Wait for the saved indicator before closing the page.

@@ -100,6 +100,10 @@ class MediaTests(unittest.TestCase):
   Path(str(f)+'.json').write_text(json.dumps({'transcription':[{'tokens':[{'text':'今天','t_dtw':100},{'text':'好','t_dtw':220},{'text':'第二句','t_dtw':450}]}]}))
   rows=json.loads((self.session/'transcript.json').read_text())['rows'];w=Words(self.media,rows,cache,8);one=w.locate(0,0);word=w.locate(0,1)
   self.assertEqual(one['alignment'],'partial_token_context');self.assertEqual((one['start'],one['end']),(word['start'],word['end']));self.assertTrue(w.audio(.5,1.5).startswith(b'RIFF'))
+ def test_missing_word_time_uses_aligned_neighbor_context(self):
+  rows=[{'cue_id':'a','start_seconds':0,'end_seconds':3,'text':'我又又讲','word_spans':[{'char_in':0,'char_out':1,'start':.1,'end':.5},{'char_in':3,'char_out':4,'start':1,'end':1.4}]}]
+  result=Words(self.media,rows,self.session/'empty-align',8).locate(1,2)
+  self.assertEqual((result['start'],result['end'],result['seek_time']),(.5,1,.75));self.assertEqual(result['alignment'],'neighbor_context_only')
  def test_export_and_render(self):
   data=self.session/'data';data.mkdir();config=json.loads((self.session/'config.json').read_text());(data/'删改状态.json').write_text(json.dumps({'baseline':config['baseline'],'revision':1,'cuts':[{'start':1,'end':2},{'start':1.5,'end':4}]}));decision=export(self.session);self.assertEqual(decision['kept_duration'],5)
   output=self.root/'rendered.mp4';render_video(self.session,output);duration=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=nw=1:nk=1',str(output)]));self.assertLess(abs(duration-5),.1)

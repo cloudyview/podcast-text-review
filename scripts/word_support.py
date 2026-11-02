@@ -29,6 +29,17 @@ class Words:
   candidates=[(Path(j['file']+'.json'),j['offset'],j['end']) for j in windows if j['offset']<=max(0,a-.1) and j['end']>=min(self.duration,b+.1) and Path(j['file']+'.json').exists()]
   if not candidates and a<27 and b<28 and (self.cache/'start.json').exists():candidates=[(self.cache/'start.json',0,28)]
   result={'selected_text':''.join(g['text'] for g in chosen),'char_in':lo,'char_out':hi+1,'cue_ids':list(dict.fromkeys(g['cue'] for g in chosen)),'start':a,'end':b,'alignment':'cue_context_only','requires_boundary_review':True,'warning':'本处精细对齐尚未准备好，当前仅载入所在原声段；请听原声定起止，不能直接当成选中字词的范围。'}
+  if not windows:
+   # Missing/zero-duration words retain the gap between actual neighboring
+   # aligned words as context, rather than jumping to the whole cue's start.
+   left=next((g['word_span'] for g in reversed(self.glyphs[:lo]) if g['cue']==chosen[0]['cue'] and g['word_span']),None)
+   right=next((g['word_span'] for g in self.glyphs[hi+1:] if g['cue']==chosen[-1]['cue'] and g['word_span']),None)
+   known=[s for s in direct if s]
+   start=known[0]['start'] if direct and direct[0] else (left['end'] if left else a)
+   finish=known[-1]['end'] if direct and direct[-1] else (right['start'] if right else b)
+   if (left or right or known) and start<finish:
+    result.update(start=start,end=finish,seek_time=(start+finish)/2,alignment='neighbor_context_only',warning='所选字缺少独立时码，已定位到前后已对齐词之间的原声。此范围仅供找词，删除前须手动定边界并试听。')
+    return result
   if candidates:
    f,offset,end=min(candidates,key=lambda x:abs((x[1]+x[2])/2-mid));sources=[(f,offset,end,None)]
   else:
