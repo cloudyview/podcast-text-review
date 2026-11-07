@@ -1,4 +1,4 @@
-import sys,json,unittest,tempfile,subprocess,shutil,threading,urllib.request,urllib.error,os,io,hashlib
+import sys,json,unittest,tempfile,subprocess,shutil,threading,urllib.request,urllib.error,os,io,hashlib,wave
 from pathlib import Path
 from unittest.mock import patch
 from http.server import ThreadingHTTPServer
@@ -11,6 +11,7 @@ from dependencies import install_plan,download_model
 from render_review import render_video
 from format_transcript import format_rows,lexical
 from transcribe_mlx import rows_from_alignment
+from align_review import align
 
 class PureTests(unittest.TestCase):
  def test_install_plans(self):
@@ -43,6 +44,33 @@ class PureTests(unittest.TestCase):
   content=b'synthetic-model';metadata={'sha':'vendor-commit','siblings':[{'rfilename':'ggml-base.bin','lfs':{'sha256':hashlib.sha256(content).hexdigest()}}]}
   with tempfile.TemporaryDirectory() as tmp,patch('dependencies.urllib.request.urlopen',side_effect=[io.BytesIO(json.dumps(metadata).encode()),io.BytesIO(content)]):
    model=download_model('base',Path(tmp));self.assertEqual(model.read_bytes(),content)
+ def test_dtw_core_retry_preserves_coverage_on_resume(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   session=Path(tmp).resolve();cache=session/'align';cache.mkdir()
+   media=session/'fixture.mp4';media.touch()
+   model=session/'ggml-large-v3-turbo-q5_0.bin';model.touch()
+   (session/'config.json').write_text(json.dumps({'media':str(media),'media_bytes':0,'media_mtime_ns':media.stat().st_mtime_ns}))
+   with wave.open(str(cache/'merged-mono16k.wav'),'wb') as wav:
+    wav.setparams((1,2,16000,0,'NONE','not compressed'))
+    wav.writeframes(bytes(30*16000*2))
+   def whisper(command,stdout,stderr):
+    if str(cache/'win-00000.wav') in command and '-d' not in command:
+     stdout.write('WHISPER_ASSERT: filter_width < a->ne[2]\n')
+     return subprocess.CompletedProcess(command,1)
+    if '-d' in command:
+     self.assertEqual(command[command.index('-d')+1],'25000')
+     output=command[command.index('-of')+1]
+    else:
+     output=command[-1]
+    Path(output+'.json').write_text(json.dumps({'transcription':[]}))
+    return subprocess.CompletedProcess(command,0)
+   with patch('align_review.shutil.which',return_value=None),patch('align_review.subprocess.run',side_effect=whisper) as run:
+    self.assertEqual(align(session,model)['windows'],2)
+    self.assertEqual(run.call_count,3)
+    self.assertEqual(align(session,model)['windows'],2)
+    self.assertEqual(run.call_count,3)
+   jobs=json.loads((cache/'windows.json').read_text())
+   self.assertEqual([(j['offset'],j['end']) for j in jobs],[(0,25),(25,30)])
  def test_srt(self):
   with tempfile.TemporaryDirectory() as tmp:
    f=Path(tmp)/'s.srt';f.write_text('1\n00:00:00,000 --> 00:00:02,000\nHello.\n\n2\n00:00:02,000 --> 00:00:03,000\nWorld.\n')
