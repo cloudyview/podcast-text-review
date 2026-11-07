@@ -2,6 +2,8 @@
 import json,os,platform,shlex,shutil,subprocess,urllib.request,hashlib
 from pathlib import Path
 
+DEFAULT_WHISPER_MODEL = "large-v3-turbo-q5_0"
+
 def report():
  return {'python':platform.python_version(),'platform':platform.system(),'tools':{n:shutil.which(n) for n in ['ffmpeg','ffprobe','whisper-cli','cmake','git']}}
 def install_plan(tool,system=None,which=shutil.which):
@@ -27,7 +29,7 @@ def install(tool):
  if tool=='whisper' and not shutil.which('whisper-cli'):raise RuntimeError('whisper-cli is not on PATH after installation; run doctor in a new terminal')
 def cache_dir():
  return Path(os.environ.get('PODCAST_REVIEW_CACHE',Path.home()/'.cache/podcast-text-review'))
-def download_model(name='base',directory=None):
+def download_model(name=DEFAULT_WHISPER_MODEL,directory=None):
  allowed={'tiny','tiny.en','base','base.en','small','small.en','medium','medium.en','large-v3','large-v3-turbo','large-v3-turbo-q5_0','large-v3-turbo-q8_0'}
  if name not in allowed:raise ValueError('Unsupported model name')
  directory=Path(directory or cache_dir()/'models');directory.mkdir(parents=True,exist_ok=True);filename=f'ggml-{name}.bin';target=directory/filename

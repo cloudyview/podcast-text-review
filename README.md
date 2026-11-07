@@ -51,9 +51,9 @@ To prepare machine timing candidates from the actual source audio:
 
 ```sh
 python3 review.py doctor --install whisper       # Homebrew install; other platforms: see below
-python3 review.py download-model base
+python3 review.py download-model
 python3 review.py align --session /path/to/review-session \
-  --model /path/to/ggml-base.bin --language en
+  --model /path/to/ggml-large-v3-turbo-q5_0.bin --language en
 ```
 
 ### No subtitles: local speech recognition
@@ -64,9 +64,9 @@ python3 review.py new --media /path/to/video.mp4 \
 python3 review.py serve --session /path/to/new-review --open
 ```
 
-The default Whisper path requires `whisper-cli` and downloads the selected model from its official model repository on first use, validating its SHA256 from vendor metadata. `--model /path/to/model.bin` reuses a local model; `--model-name small` chooses another supported download. There is no upload of the recording. Existing same-clock text is reused; it is not automatically rewritten.
+The default Whisper model is `large-v3-turbo-q5_0`. The Whisper path requires `whisper-cli` and validates the selected weights against the official model repository’s SHA256. Use `--model /path/to/ggml-large-v3-turbo-q5_0.bin` to reuse local weights without contacting the model repository, or `--model-name` to explicitly choose another supported download. There is no upload of the recording. Existing same-clock text is reused; it is not automatically rewritten.
 
-**Verbatim matters.** ASR is fallible, and some engines normalize dialect speech into a different written form even in transcription mode. The tool retains raw recognition output and never runs a summarizer, translator or prose rewrite over the review text. Test a representative sample before trusting dialect word deletions; unsupported or mismatched words must use manual audio-boundary review. Reading punctuation is appended without changing lexical characters, and raw text remains available.
+**Verbatim matters.** ASR is fallible, and some engines normalize dialect speech into a different written form even in transcription mode. The tool retains raw recognition output and never runs a summarizer, translator or prose rewrite over the review text. Compare a representative sample with the source audio and any same-version captions, including short phrases and important terms. Use manual audio-boundary review for words with missing or mismatched timing. Reading punctuation is appended without changing lexical characters, and raw text remains available.
 
 ### Speakers and paragraphs
 

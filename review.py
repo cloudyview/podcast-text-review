@@ -4,13 +4,13 @@ import argparse,json,subprocess,sys,shutil,webbrowser
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT/'scripts'))
-from dependencies import report,install,install_plan,download_model
+from dependencies import DEFAULT_WHISPER_MODEL,report,install,install_plan,download_model
 
 def main(argv=None):
  ap=argparse.ArgumentParser(description=__doc__);subs=ap.add_subparsers(dest='command',required=True)
  doctor=subs.add_parser('doctor');doctor.add_argument('--install',choices=['ffmpeg','whisper','all']);doctor.add_argument('--dry-run',action='store_true')
- dl=subs.add_parser('download-model');dl.add_argument('name',nargs='?',default='base');dl.add_argument('--directory',type=Path)
- new=subs.add_parser('new');new.add_argument('--media',type=Path,required=True);new.add_argument('--session',type=Path,required=True);new.add_argument('--title',default='人工文字审校');new.add_argument('--transcript',type=Path);new.add_argument('--model',type=Path);new.add_argument('--model-name',default='base');new.add_argument('--language',default='auto');new.add_argument('--no-align',action='store_true',help='Skip model alignment; use manual waveform boundaries');new.add_argument('--proxy',action='store_true');new.add_argument('--speaker-turns',type=Path);new.add_argument('--asr-engine',choices=['whisper','mlx-qwen'],default='whisper');new.add_argument('--mlx-model',default='mlx-community/Qwen3-ASR-0.6B-4bit');new.add_argument('--mlx-aligner',default='mlx-community/Qwen3-ForcedAligner-0.6B-4bit')
+ dl=subs.add_parser('download-model');dl.add_argument('name',nargs='?',default=DEFAULT_WHISPER_MODEL);dl.add_argument('--directory',type=Path)
+ new=subs.add_parser('new');new.add_argument('--media',type=Path,required=True);new.add_argument('--session',type=Path,required=True);new.add_argument('--title',default='人工文字审校');new.add_argument('--transcript',type=Path);new.add_argument('--model',type=Path);new.add_argument('--model-name',default=DEFAULT_WHISPER_MODEL,help='Whisper model to download (default: %(default)s)');new.add_argument('--language',default='auto');new.add_argument('--no-align',action='store_true',help='Skip model alignment; use manual waveform boundaries');new.add_argument('--proxy',action='store_true');new.add_argument('--speaker-turns',type=Path);new.add_argument('--asr-engine',choices=['whisper','mlx-qwen'],default='whisper');new.add_argument('--mlx-model',default='mlx-community/Qwen3-ASR-0.6B-4bit');new.add_argument('--mlx-aligner',default='mlx-community/Qwen3-ForcedAligner-0.6B-4bit')
  align=subs.add_parser('align');align.add_argument('--session',type=Path,required=True);align.add_argument('--model',type=Path,required=True);align.add_argument('--language',default='auto')
  serve=subs.add_parser('serve');serve.add_argument('--session',type=Path,required=True);serve.add_argument('--port',type=int,default=8794);serve.add_argument('--open',action='store_true')
  export=subs.add_parser('export-decisions');export.add_argument('--session',type=Path,required=True);export.add_argument('--output',type=Path,required=True)
